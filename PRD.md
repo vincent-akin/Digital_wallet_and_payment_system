@@ -1,6 +1,6 @@
 # 📄 UPDATED PRODUCT REQUIREMENTS DOCUMENT (PRD)
 
-# **Ledger-Based Digital Wallet & Payment Processing System (LDWPS)**
+**Ledger-Based Digital Wallet & Payment Processing System (LDWPS)**
 
 **Version:** 1.0
 **Author:** Backend Engineering
