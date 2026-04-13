@@ -1,9 +1,7 @@
-import e from 'cors';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import 'dotenv/config';
 
 const config = {
+    env: process.env.NODE_ENV || 'development',
     port: process.env.PORT || 5000,
 
     database: {

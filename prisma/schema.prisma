@@ -1,0 +1,193 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+// ENUMS - Fixed sets of values
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum KycStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum AccountStatus {
+  ACTIVE
+  FROZEN
+  SUSPENDED
+}
+
+enum TransactionType {
+  DEPOSIT
+  TRANSFER
+  WITHDRAWAL
+  REVERSAL
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REVERSED
+}
+
+enum LedgerEntryType {
+  DEBIT
+  CREDIT
+}
+
+// ============================================
+// MODELS - Tables
+// ============================================
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String         // Hashed with bcrypt
+  role          UserRole       @default(USER)
+  
+  // KYC Fields - Store LAST 4 digits only, hash the full value
+  ninHash       String?        @unique  // Hashed full NIN
+  ninLast4      String?                  // Last 4 digits for display
+  bvnHash       String?        @unique  // Hashed full BVN
+  bvnLast4      String?                  // Last 4 digits for display
+  
+  kycStatus     KycStatus      @default(UNVERIFIED)
+  accountStatus AccountStatus  @default(ACTIVE)
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  // Relationships
+  wallet        Wallet?
+  sentTransactions Transaction[] @relation("Sender")
+  receivedTransactions Transaction[] @relation("Receiver")
+  auditLogs     AuditLog[]
+  fraudFlags    FraudFlag[]
+  
+  @@index([email])
+  @@index([accountStatus])
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  balance   Decimal  @default(0) @db.Decimal(15, 2)  // Max 999,999,999,999.99
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relationships
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ledgerEntries LedgerEntry[]
+  sentTransactions Transaction[] @relation("SenderWallet")
+  receivedTransactions Transaction[] @relation("ReceiverWallet")
+  
+  @@index([userId])
+}
+
+model Transaction {
+  id              String          @id @default(uuid())
+  reference       String          @unique  // Public-facing unique ID
+  idempotencyKey  String?         @unique  // For idempotency protection
+  sequence  Int     @default(autoincrement()) // Internal ordering
+  
+  type            TransactionType
+  status          TransactionStatus @default(PENDING)
+  amount          Decimal         @db.Decimal(15, 2)
+  
+  senderWalletId   String?
+  receiverWalletId String?
+  
+  // Optional: which transaction this reverses (for REVERSAL type)
+  reversesId       String?        @unique  // One reversal per original transaction
+  originalTransaction Transaction? @relation("Reversal", fields: [reversesId], references: [id])
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relationships
+  senderWallet   Wallet?         @relation("SenderWallet", fields: [senderWalletId], references: [id])
+  receiverWallet Wallet?         @relation("ReceiverWallet", fields: [receiverWalletId], references: [id])
+  ledgerEntries  LedgerEntry[]
+  reversalTarget Transaction?    @relation("Reversal", fields: [reversesId], references: [id])
+  
+  @@index([reference])
+  @@index([senderWalletId])
+  @@index([receiverWalletId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model LedgerEntry {
+  id            String          @id @default(uuid())
+  walletId      String
+  transactionId String
+  type          LedgerEntryType
+  amount        Decimal         @db.Decimal(15, 2)
+  balanceAfter  Decimal         @db.Decimal(15, 2)  // Wallet balance AFTER this entry
+  
+  createdAt     DateTime        @default(now())
+  
+  // Relationships
+  wallet      Wallet      @relation(fields: [walletId], references: [id])
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  
+  @@index([walletId])
+  @@index([transactionId])
+  @@index([createdAt])
+}
+
+model IdempotencyRecord {
+  id           String   @id @default(uuid())
+  key          String   @unique  // The idempotency key from request header
+  responseBody Json              // Stored response to return on duplicate
+  statusCode   Int
+  createdAt    DateTime @default(now())
+  
+  @@index([key])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String   // e.g., "TRANSFER", "REVERSAL", "ACCOUNT_FROZEN"
+  metadata  Json     // Additional context (amount, target user, etc.)
+  ipAddress String?  // For security auditing
+  createdAt DateTime @default(now())
+  
+  // Relationships
+  user User @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model FraudFlag {
+  id        String   @id @default(uuid())
+  userId    String
+  reason    String
+  resolved  Boolean  @default(false)
+  resolvedBy String?  // SUPER_ADMIN who resolved it
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+  
+  // Relationships
+  user User @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([resolved])
+}
