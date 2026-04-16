@@ -1,7 +1,11 @@
 import prisma from '../db/prisma.js';
 
-export const createUser = (data) => {
-    return prisma.user.create({ data });
+export const createUser = (data, tx = prisma) => {
+    return tx.user.create({ data });
+};
+
+export const createWallet = (userId, tx = prisma) => {
+    return tx.wallet.create({ data });
 };
 
 export const findUserByEmail = (email) => {
