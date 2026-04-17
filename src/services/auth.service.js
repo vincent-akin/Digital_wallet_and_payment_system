@@ -1,5 +1,6 @@
 import prisma from '../db/prisma.js';
-import { createUser, createWallet, findUserByEmail } from '../repositories/user.repository.js';
+import { createUser, deactivateUser, findUserByEmail, findUserById } from '../repositories/user.repository.js';
+import { createWallet } from '../repositories/wallet.repository.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 import { HTTP_STATUS, MESSAGES } from '../utils/constants.js';
@@ -21,7 +22,7 @@ export const registerUser = async(data) => {
     // Create the user and wallet in one atomic transaction
     const user = await prisma.$transaction(async (tx) => {
         
-const newUser = await createUser({ email, password: hashedPassword }, tx);
+    const newUser = await createUser({ email, password: hashedPassword }, tx);
         await createWallet({ userId: newUser.id }, tx);
         return newUser;
     });
@@ -88,4 +89,40 @@ export const loginUser = async({ email, password }) => {
         },
     };
 
+};
+
+export const updateUserService = async(id, data) => {
+    const user = await findUserById(id);
+
+    if (!user) {
+        const error = new Error(MESSAGES.USER_NOT_FOUND);
+        error.statusCode = HTTP_STATUS.NOT_FOUND;
+        throw error;
+    }
+
+    //Prevent password or roles from being updated through this endpoint
+    delete data.password;
+    delete data.role;
+
+    const updated = await updateUser(id, data);
+
+    return {
+        id: updated.id,
+        email: updated.email,
+        role: updated.role,
+        kycStatus: updated.kycStatus,
+        accountStatus: updated.accountStatus,
+    };
+};
+
+export const deactivateUserService = async(id) => {
+    const user = await findUserById(id);
+
+    if (!user) {
+        const error = new Error(MESSAGES.USER_NOT_FOUND);
+        error.statusCode = HTTP_STATUS.NOT_FOUND;
+        throw error;
+    }
+
+    await deactivateUser(id);
 };
