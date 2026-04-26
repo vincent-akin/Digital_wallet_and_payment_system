@@ -13,6 +13,12 @@ export const HTTP_STATUS = {
     INTERNAL_SERVER_ERROR: 500
 };
 
+export const ACCOUNT_STATUS = {
+    ACTIVE: 'ACTIVE',
+    FROZEN: 'FROZEN',
+    SUSPENDED: 'SUSPENDED',
+};
+
 export const MESSAGES = {
     //Authentication
     REGISTER_SUCCESS: 'User registered successfully.',
@@ -51,4 +57,24 @@ export const MESSAGES = {
 
     //General
     INTERNAL_ERROR: 'An internal server error occurred. Please try again later.',
+};
+
+export const ROLE = {
+  USER: 'USER',
+  ADMIN: 'ADMIN',
+  SUPER_ADMIN: 'SUPER_ADMIN',
+};
+
+export const TRANSACTION_STATUS = {
+  PENDING: 'PENDING',
+  SUCCESS: 'SUCCESS',
+  FAILED: 'FAILED',
+  REVERSED: 'REVERSED',
+};
+
+export const TRANSACTION_TYPE = {
+  DEPOSIT: 'DEPOSIT',
+  TRANSFER: 'TRANSFER',
+  WITHDRAWAL: 'WITHDRAWAL',
+  REVERSAL: 'REVERSAL',
 };

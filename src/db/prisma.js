@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client'
+import pkg from '@prisma/client';
+const { PrismaClient } = pkg;
 
 // Singleton pattern - prevents multiple connections in development
 const globalForPrisma = globalThis

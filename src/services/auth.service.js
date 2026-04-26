@@ -1,9 +1,9 @@
 import prisma from '../db/prisma.js';
-import { createUser, deactivateUser, findUserByEmail, findUserById } from '../repositories/user.repository.js';
+import { createUser, deactivateUser, findUserByEmail, findUserById, updateUser } from '../repositories/user.repository.js';
 import { createWallet } from '../repositories/wallet.repository.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
-import { HTTP_STATUS, MESSAGES } from '../utils/constants.js';
+import { HTTP_STATUS, MESSAGES, ACCOUNT_STATUS } from '../utils/constants.js';
 
 export const registerUser = async(data) => {
     const { email, password } = data;
@@ -54,13 +54,13 @@ export const loginUser = async({ email, password }) => {
     }
 
     // Check if account is frozen, suspended, or deactivated
-    if (user.accountStatus === 'frozen') {
+    if (user.accountStatus === ACCOUNT_STATUS.FROZEN) {
         const error = new Error(MESSAGES.ACCOUNT_FROZEN);
         error.statusCode = HTTP_STATUS.FORBIDDEN;
         throw error;
     }
 
-    if (user.accountStatus === 'suspended') {
+    if (user.accountStatus === ACCOUNT_STATUS.SUSPENDED) {
         const error = new Error(MESSAGES.ACCOUNT_SUSPENDED);
         error.statusCode = HTTP_STATUS.FORBIDDEN;
         throw error;
@@ -124,5 +124,6 @@ export const deactivateUserService = async(id) => {
         throw error;
     }
 
+    
     await deactivateUser(id);
 };
